@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extrapago - Sistema de Gestión de Cobros</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Leaflet CSS y JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- FIREBASE SDKs (Compatiblity mode para CDN) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f3f4f6;
+            -webkit-tap-highlight-color: transparent;
+        }
+    </style>
+</head>
+<body class="text-gray-800 antialiased">
+
+    <!-- APP CONTAINER -->
+    <div id="app" class="max-w-md mx-auto min-h-screen bg-gray-50 flex flex-col relative shadow-xl border-x border-gray-200">
+
+        <!-- HEADER TOP -->
+        <header id="mainHeader" class="bg-white border-b border-gray-200 sticky top-0 z-30 px-4 py-3 flex items-center justify-between hidden">
+            <div class="flex items-center space-x-2">
+                <div class="w-8 h-8 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center text-sm" id="userAvatar">U</div>
+                <div>
+                    <h1 class="text-xs uppercase font-extrabold tracking-wider text-gray-400 leading-none">EXTRAPAGO</h1>
+                    <span id="headerUserRole" class="text-sm font-bold text-gray-800 leading-tight block">Cargando...</span>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2">
+                <span id="roleBadge" class="px-2 py-0.5 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800">Cobrador</span>
+                <button onclick="logout()" class="p-2 text-gray-500 hover:text-red-600 rounded-lg hover:bg-gray-100 transition" title="Cerrar Sesión">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- MAIN CONTENT AREA -->
+        <main id="mainContent" class="flex-1 p-4 pb-24 overflow-y-auto">
+            
+            <!-- AUTH VIEW (LOGIN / REGISTER) -->
+            <div id="viewAuth" class="min-h-[85vh] flex flex-col justify-center py-6">
+                <div class="text-center mb-6">
+                    <div class="w-16 h-16 bg-emerald-600 rounded-2xl mx-auto flex items-center justify-center text-white text-3xl font-extrabold shadow-lg shadow-emerald-200 mb-3">
+                        <i class="fa-solid fa-wallet"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-gray-900">Extrapago</h2>
+                    <p class="text-sm text-gray-500">Sistema de Control de Créditos y Cobros</p>
+                </div>
+
+                <!-- LOGIN BOX -->
+                <div id="loginFormCard" class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4" id="authFormTitle">Iniciar Sesión</h3>
+                    <form onsubmit="handleAuthSubmit(event)" class="space-y-4">
+                        <div id="nameFieldContainer" class="hidden">
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Nombre Completo</label>
+                            <input type="text" id="regName" placeholder="Ej: Carlos Pérez" class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Usuario / Username</label>
+                            <input type="text" id="loginUser" required placeholder="Ej: admin o carlos" class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Contraseña</label>
+                            <input type="password" id="loginPass" required placeholder="••••••••" class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                        </div>
+                        <button type="submit" id="authSubmitBtn" class="w-full py-3 bg-emerald-600 text-white font-bold rounded-xl shadow-md hover:bg-emerald-700 transition">
+                            Ingresar al Sistema
+                        </button>
+                    </form>
+
+                    <div class="mt-4 text-center">
+                        <button type="button" onclick="toggleAuthMode()" id="authToggleBtn" class="text-xs text-emerald-700 font-semibold hover:underline">
+                            ¿Eres cobrador nuevo? Regístrate aquí
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CLIENTS VIEW -->
+            <div id="viewClients" class="space-y-4 hidden">
+                <!-- PANEL DIARIO / RESUMEN COBRADOR -->
+                <div id="collectorDailySummary" class="bg-emerald-900 text-white p-4 rounded-2xl shadow-sm hidden space-y-3">
+                    <div class="flex justify-between items-center text-xs text-emerald-300">
+                        <span>Resumen de Hoy</span>
+                        <i class="fa-solid fa-calendar-day"></i>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 pt-1">
+                        <div class="bg-emerald-800/60 p-2.5 rounded-xl">
+                            <span class="text-[10px] text-emerald-300 block">Total Cobrado Hoy</span>
+                            <strong id="colCollectedToday" class="text-base font-black">$0</strong>
+                        </div>
+                        <div class="bg-emerald-800/60 p-2.5 rounded-xl">
+                            <span class="text-[10px] text-emerald-300 block">Falta para Meta</span>
+                            <strong id="colRemainingToday" class="text-base font-black">$0</strong>
+                        </div>
+                    </div>
+                    <button onclick="sendDailyReportToAdmin()" class="w-full py-2 bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl flex items-center justify-center space-x-2 transition">
+                        <i class="fa-brands fa-whatsapp text-sm"></i><span>Enviar Reporte Diario al Admin</span>
+                    </button>
+                </div>
+
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-xl font-black text-gray-900">Clientes</h2>
+                        <p class="text-xs text-gray-500">Gestiona tus clientes y créditos</p>
+                    </div>
+                    <button onclick="switchTab('newSale')" class="bg-emerald-600 text-white font-bold px-3 py-2 rounded-xl text-xs flex items-center space-x-1 shadow-sm">
+                        <i class="fa-solid fa-plus"></i><span>Crear Cliente</span>
+                    </button>
+                </div>
+
+                <div class="bg-white p-3 rounded-2xl shadow-sm border border-gray-200 space-y-3">
+                    <div>
+                        <input type="text" id="searchClientInput" oninput="renderClients()" placeholder="Buscar por nombre..." class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:outline-none">
+                    </div>
+                </div>
+
+                <div id="clientsList" class="space-y-3"></div>
+            </div>
+
+            <!-- NEW SALE VIEW -->
+            <div id="viewNewSale" class="space-y-4 hidden">
+                <div class="flex items-center justify-between">
+                    <button onclick="switchTab('clients')" class="text-xs font-bold text-gray-600 bg-white px-3 py-1.5 rounded-lg border">← Volver</button>
+                </div>
+                <h2 class="text-xl font-black text-gray-900">Nueva Venta / Crédito</h2>
+                
+                <form onsubmit="handleCreateSale(event)" class="bg-white p-4 rounded-2xl shadow-sm border space-y-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Nombres *</label>
+                        <input type="text" id="saleName" required class="w-full px-3 py-2 text-sm border rounded-xl">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Apellidos *</label>
+                        <input type="text" id="saleLastName" required class="w-full px-3 py-2 text-sm border rounded-xl">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Teléfono / WhatsApp *</label>
+                        <input type="tel" id="salePhone" required class="w-full px-3 py-2 text-sm border rounded-xl" placeholder="3001234567">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Dirección *</label>
+                        <input type="text" id="saleAddress" required class="w-full px-3 py-2 text-sm border rounded-xl mb-2" placeholder="Calle 72 # 41-20">
+                        <button type="button" onclick="captureLocation()" class="w-full py-2.5 bg-gray-100 text-gray-700 font-bold rounded-xl text-xs flex items-center justify-center space-x-2 border hover:bg-gray-200 transition">
+                            <i class="fa-solid fa-location-dot text-emerald-600 text-base"></i>
+                            <span id="locationBtnText">Capturar Ubicación GPS actual</span>
+                        </button>
+                        <input type="hidden" id="saleLat">
+                        <input type="hidden" id="saleLng">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Monto ($) *</label>
+                            <input type="number" id="saleAmount" required oninput="calculateCreditTotals()" class="w-full px-3 py-2 text-sm border rounded-xl" placeholder="100000">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Interés (%) *</label>
+                            <input type="number" id="saleInterest" required value="20" oninput="calculateCreditTotals()" class="w-full px-3 py-2 text-sm border rounded-xl">
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2 py-1">
+                        <input type="checkbox" id="saleWeekly" onchange="calculateCreditTotals()" class="w-4 h-4 text-emerald-600 rounded">
+                        <label for="saleWeekly" class="text-xs font-medium text-gray-700">Pago Semanal (Por defecto Diario)</label>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Cuotas *</label>
+                        <select id="saleInstalments" onchange="calculateCreditTotals()" class="w-full px-3 py-2 text-sm border rounded-xl bg-white">
+                            <option value="15">15 Cuotas</option>
+                            <option value="20">20 Cuotas</option>
+                            <option value="30" selected>30 Cuotas</option>
+                            <option value="40">40 Cuotas</option>
+                        </select>
+                    </div>
+                    <div class="bg-emerald-50 p-3 rounded-xl text-center">
+                        <span class="text-xs font-bold text-emerald-800">Total + Interés</span>
+                        <div id="calcTotal" class="text-xl font-black text-emerald-700">$0</div>
+                        <span id="calcQuota" class="text-xs font-bold text-gray-600">$0 /día</span>
+                    </div>
+
+                    <button type="submit" id="btnSaveSale" class="w-full py-3 bg-emerald-600 text-white font-bold rounded-xl shadow-md hover:bg-emerald-700 transition">Guardar Crédito en la Nube</button>
+                </form>
+            </div>
+
+            <!-- ROUTE VIEW -->
+            <div id="viewRoute" class="space-y-4 hidden">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xl font-black text-gray-900">Ruta de Cobro</h2>
+                    <div class="flex bg-gray-200 p-1 rounded-xl text-xs font-bold">
+                        <button id="btnRouteList" onclick="toggleRouteView('list')" class="px-3 py-1 rounded-lg bg-white text-gray-800 shadow-sm">Lista</button>
+                        <button id="btnRouteMap" onclick="toggleRouteView('map')" class="px-3 py-1 rounded-lg text-gray-500">Mapa</button>
+                    </div>
+                </div>
+
+                <div id="routeList" class="space-y-3"></div>
+
+                <div id="routeMapContainer" class="hidden">
+                    <div id="routeMap" class="w-full h-96 rounded-2xl border border-gray-300 shadow-sm z-10"></div>
+                </div>
+            </div>
+
+            <!-- REGISTER PAYMENT VIEW -->
+            <div id="viewRegisterPayment" class="space-y-4 hidden">
+                <h2 class="text-xl font-black text-gray-900">Registrar Abono</h2>
+                <div class="bg-white p-4 rounded-2xl shadow-sm border space-y-3">
+                    <select id="payClientSelect" onchange="updatePayFormDetails()" class="w-full px-3 py-2 text-sm border rounded-xl bg-white"></select>
+                    <div id="payClientDetailsCard" class="bg-gray-50 p-3 rounded-xl text-xs space-y-1">
+                        <div>Saldo Actual: <strong id="payCurrentBalance" class="text-red-600">$0</strong></div>
+                    </div>
+                    <input type="number" id="payAmountInput" placeholder="Monto abono ($)" class="w-full px-3 py-2 text-sm border rounded-xl">
+                    <button onclick="submitPayment()" id="btnSubmitPayment" class="w-full py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 transition">Guardar y Enviar Recibo WhatsApp</button>
+                </div>
+            </div>
+
+            <!-- ADMIN VIEW -->
+            <div id="viewAdmin" class="space-y-4 hidden">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xl font-black text-gray-900">Panel Administrador</h2>
+                    <button id="btnBackAdmin" onclick="renderAdmin()" class="text-xs font-bold text-gray-600 bg-white px-3 py-1.5 rounded-lg border hidden">← Volver a Cobradores</button>
+                </div>
+                
+                <div class="bg-emerald-900 text-white p-4 rounded-2xl space-y-3">
+                    <span id="adminStatTitle" class="text-xs text-emerald-300 block font-bold uppercase tracking-wider">Caja General / Cartera</span>
+                    <strong id="adminStatTotalLent" class="text-2xl font-black block">$0</strong>
+                    <div class="grid grid-cols-2 gap-2 pt-2 border-t border-emerald-800">
+                        <div class="bg-emerald-800/70 p-2.5 rounded-xl">
+                            <span class="text-[10px] text-emerald-300 block">Total Invertido (Capital)</span>
+                            <strong id="adminStatInvested" class="text-sm font-bold">$0</strong>
+                        </div>
+                        <div class="bg-emerald-800/70 p-2.5 rounded-xl">
+                            <span class="text-[10px] text-emerald-300 block">Total Generado (Interés)</span>
+                            <strong id="adminStatGenerated" class="text-sm font-bold">$0</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="adminContentArea" class="space-y-2"></div>
+            </div>
+
+            <!-- MORE VIEW -->
+            <div id="viewMore" class="space-y-4 hidden">
+                <h2 class="text-xl font-black text-gray-900">Opciones</h2>
+                <div class="bg-white rounded-2xl border divide-y">
+                    <div class="p-4" id="moreUserName">Usuario</div>
+                    <button onclick="switchTab('admin')" id="btnMoreAdmin" class="w-full p-4 text-left text-emerald-700 font-bold hidden">Panel Admin</button>
+                    <button onclick="logout()" class="w-full p-4 text-left text-red-600 font-bold">Cerrar Sesión</button>
+                </div>
+            </div>
+        </main>
+
+        <!-- BOTTOM NAV -->
+        <nav id="bottomNav" class="bg-white border-t fixed bottom-0 left-0 right-0 max-w-md mx-auto z-30 flex justify-around py-2 px-1 hidden">
+            <button onclick="switchTab('clients')" id="nav-clients" class="flex flex-col items-center text-emerald-600 font-bold text-xs"><i class="fa-solid fa-users"></i><span>Clientes</span></button>
+            <button onclick="switchTab('route')" id="nav-route" class="flex flex-col items-center text-gray-400 text-xs"><i class="fa-solid fa-map"></i><span>Ruta</span></button>
+            <button onclick="switchTab('newSale')" id="nav-newSale" class="flex flex-col items-center text-gray-400 text-xs"><i class="fa-solid fa-plus-circle"></i><span>Venta</span></button>
+            <button onclick="switchTab('registerPayment')" id="nav-registerPayment" class="flex flex-col items-center text-gray-400 text-xs"><i class="fa-solid fa-hand-holding-dollar"></i><span>Abonar</span></button>
+            <button onclick="switchTab('more')" id="nav-more" class="flex flex-col items-center text-gray-400 text-xs"><i class="fa-solid fa-bars"></i><span>Más</span></button>
+        </nav>
+    </div>
+
+    <script>
+        // --- 1. FIREBASE INITIALIZATION ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyBzx6jjpTW9OGQr9XvVOyI6PDyJzFsWTEo",
+            authDomain: "extrapago-app.firebaseapp.com",
+            projectId: "extrapago-app",
+            storageBucket: "extrapago-app.firebasestorage.app",
+            messagingSenderId: "507272401022",
+            appId: "1:507272401022:web:0f3bf529de05d53f0ac82f",
+            measurementId: "G-8PP6JQF8QG"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // --- 2. GLOBAL VARIABLES ---
+        let users = [];
+        let clients = [];
+        let paymentsLog = [];
+        let currentUser = null;
+        let selectedCollectorId = null;
+        let isRegisterMode = false;
+        let capturedLat = null;
+        let capturedLng = null;
+        let mapInstance = null;
+        let markersGroup = null;
+
+        // Usuario Admin por defecto si la BD está vacía
+        const DEFAULT_ADMIN = {
+            id: 'admin_1',
+            name: 'Administrador',
+            username: 'admin',
+            pass: 'admin123',
+            role: 'admin'
+        };
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initRealtimeListeners();
+            const saved = localStorage.getItem('ep_session');
+            if (saved) {
+                currentUser = JSON.parse(saved);
+                showAppUI();
+            } else {
+                showAuthUI();
+            }
+        });
+
+        // --- 3. REALTIME SYNC WITH FIREBASE ---
+        function initRealtimeListeners() {
+            // Escuchar Usuarios
+            db.collection("users").onSnapshot((snapshot) => {
+                users = [];
+                snapshot.forEach((doc) => {
+                    users.push(doc.data());
+                });
+
+                // Si no hay ningún usuario registrado, agregamos el Admin por defecto a la nube
+                if (users.length === 0) {
+                    db.collection("users").doc(DEFAULT_ADMIN.id).set(DEFAULT_ADMIN);
+                }
+            });
+
+            // Escuchar Clientes en tiempo real
+            db.collection("clients").onSnapshot((snapshot) => {
+                clients = [];
+                snapshot.forEach((doc) => {
+                    clients.push(doc.data());
+                });
+
+                // Si la vista actual es visible, refrescamos dinámicamente
+                if (currentUser) {
+                    renderClients();
+                    if (selectedCollectorId) {
+                        selectCollector(selectedCollectorId);
+                    } else if (document.getElementById('viewAdmin').classList.contains('hidden') === false) {
+                        renderAdmin();
+                    }
+                }
+            });
+
+            // Escuchar Pagos/Abonos en tiempo real
+            db.collection("payments").onSnapshot((snapshot) => {
+                paymentsLog = [];
+                snapshot.forEach((doc) => {
+                    paymentsLog.push(doc.data());
+                });
+                if (currentUser) renderClients();
+            });
+        }
+
+        // --- 4. AUTHENTICATION LOGIC ---
+        function toggleAuthMode() {
+            isRegisterMode = !isRegisterMode;
+            document.getElementById('authFormTitle').innerText = isRegisterMode ? 'Registro de Cobrador' : 'Iniciar Sesión';
+            document.getElementById('nameFieldContainer').classList.toggle('hidden', !isRegisterMode);
+            document.getElementById('authSubmitBtn').innerText = isRegisterMode ? 'Registrarse como Cobrador' : 'Ingresar al Sistema';
+            document.getElementById('authToggleBtn').innerText = isRegisterMode ? '¿Ya tienes cuenta? Inicia sesión' : '¿Eres cobrador nuevo? Regístrate aquí';
+            document.getElementById('loginUser').value = '';
+            document.getElementById('loginPass').value = '';
+            if(isRegisterMode) document.getElementById('regName').value = '';
+        }
+
+        async function handleAuthSubmit(e) {
+            e.preventDefault();
+            const u = document.getElementById('loginUser').value.trim();
+            const p = document.getElementById('loginPass').value.trim();
+
+            if (isRegisterMode) {
+                const name = document.getElementById('regName').value.trim();
+                if (!name) {
+                    alert('Por favor ingresa tu nombre completo.');
+                    return;
+                }
+                const existing = users.find(x => x.username.toLowerCase() === u.toLowerCase());
+                if (existing) {
+                    alert('El nombre de usuario ya está en uso. Elige otro.');
+                    return;
+                }
+                const newCol = {
+                    id: 'usr_' + Date.now(),
+                    name: name,
+                    username: u,
+                    pass: p,
+                    role: 'cobrador'
+                };
+
+                try {
+                    await db.collection("users").doc(newCol.id).set(newCol);
+                    alert('¡Registro exitoso en la nube! Ahora puedes iniciar sesión.');
+                    toggleAuthMode();
+                } catch(err) {
+                    alert('Error registrando usuario: ' + err.message);
+                }
+            } else {
+                const found = users.find(x => x.username.toLowerCase() === u.toLowerCase() && x.pass === p);
+                if (found) {
+                    currentUser = found;
+                    localStorage.setItem('ep_session', JSON.stringify(currentUser));
+                    showAppUI();
+                } else {
+                    alert('Credenciales incorrectas o usuario no existente.');
+                }
+            }
+        }
+
+        function logout() {
+            currentUser = null;
+            selectedCollectorId = null;
+            localStorage.removeItem('ep_session');
+            showAuthUI();
+        }
+
+        function showAuthUI() {
+            document.getElementById('mainHeader').classList.add('hidden');
+            document.getElementById('bottomNav').classList.add('hidden');
+            hideAllViews();
+            document.getElementById('viewAuth').classList.remove('hidden');
+        }
+
+        function showAppUI() {
+            document.getElementById('mainHeader').classList.remove('hidden');
+            document.getElementById('bottomNav').classList.remove('hidden');
+            document.getElementById('userAvatar').innerText = currentUser.name.charAt(0);
+            document.getElementById('headerUserRole').innerText = currentUser.name;
+            document.getElementById('roleBadge').innerText = currentUser.role === 'admin' ? 'Admin' : 'Cobrador';
+            document.getElementById('moreUserName').innerText = currentUser.name;
+            
+            if (currentUser.role === 'admin') {
+                document.getElementById('btnMoreAdmin').classList.remove('hidden');
+            } else {
+                document.getElementById('btnMoreAdmin').classList.add('hidden');
+            }
+            switchTab('clients');
+        }
+
+        function hideAllViews() {
+            ['viewAuth', 'viewClients', 'viewNewSale', 'viewRoute', 'viewRegisterPayment', 'viewAdmin', 'viewMore'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+        }
+
+        function switchTab(tab) {
+            hideAllViews();
+            if (tab === 'clients') { 
+                document.getElementById('viewClients').classList.remove('hidden'); 
+                renderClients(); 
+            }
+            else if (tab === 'newSale') { 
+                document.getElementById('viewNewSale').classList.remove('hidden'); 
+                calculateCreditTotals();
+                capturedLat = null;
+                capturedLng = null;
+                document.getElementById('locationBtnText').innerText = 'Capturar Ubicación GPS actual';
+                document.getElementById('locationBtnText').classList.remove('text-emerald-700', 'font-bold');
+            }
+            else if (tab === 'route') { 
+                document.getElementById('viewRoute').classList.remove('hidden'); 
+                toggleRouteView('list');
+                renderRoute(); 
+            }
+            else if (tab === 'registerPayment') { 
+                document.getElementById('viewRegisterPayment').classList.remove('hidden'); 
+                populatePaymentDropdown(); 
+            }
+            else if (tab === 'admin') { 
+                if(currentUser.role !== 'admin') {
+                    alert('Acceso no autorizado.');
+                    switchTab('clients');
+                    return;
+                }
+                document.getElementById('viewAdmin').classList.remove('hidden'); 
+                selectedCollectorId = null;
+                renderAdmin(); 
+            }
+            else if (tab === 'more') { document.getElementById('viewMore').classList.remove('hidden'); }
+        }
+
+        function getMyClients() {
+            if (!currentUser) return [];
+            if (currentUser.role === 'admin') {
+                if (selectedCollectorId) {
+                    return clients.filter(c => c.collectorId == selectedCollectorId);
+                }
+                return clients;
+            } else {
+                return clients.filter(c => c.collectorId == currentUser.id);
+            }
+        }
+
+        function captureLocation() {
+            const btnText = document.getElementById('locationBtnText');
+            if (!navigator.geolocation) {
+                alert('La geolocalización no es compatible con tu navegador.');
+                return;
+            }
+            btnText.innerText = 'Obteniendo ubicación GPS...';
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    capturedLat = position.coords.latitude;
+                    capturedLng = position.coords.longitude;
+                    document.getElementById('saleLat').value = capturedLat;
+                    document.getElementById('saleLng').value = capturedLng;
+                    btnText.innerText = `GPS Guardado (${capturedLat.toFixed(4)}, ${capturedLng.toFixed(4)})`;
+                    btnText.classList.add('text-emerald-700', 'font-bold');
+                },
+                (error) => {
+                    alert('No se pudo obtener la ubicación. Asegúrate de dar permisos de GPS.');
+                    btnText.innerText = 'Capturar Ubicación GPS actual';
+                },
+                { enableHighAccuracy: true }
+            );
+        }
+
+        function renderClients() {
+            const container = document.getElementById('clientsList');
+            const searchInput = document.getElementById('searchClientInput');
+            const search = searchInput ? searchInput.value.toLowerCase() : '';
+            const myClients = getMyClients();
+            const filtered = myClients.filter(c => c.name.toLowerCase().includes(search) || c.lastName.toLowerCase().includes(search));
+
+            const summaryBox = document.getElementById('collectorDailySummary');
+            if (currentUser.role === 'cobrador') {
+                summaryBox.classList.remove('hidden');
+                const todayStr = new Date().toISOString().slice(0,10);
+                const myTodayPayments = paymentsLog.filter(p => p.collectorId == currentUser.id && p.date === todayStr);
+                const totalCollectedToday = myTodayPayments.reduce((acc, p) => acc + p.amount, 0);
+
+                const totalDailyQuotaExpected = myClients.reduce((acc, c) => acc + (c.quotaValue || 0), 0);
+                const remainingToday = Math.max(0, totalDailyQuotaExpected - totalCollectedToday);
+
+                document.getElementById('colCollectedToday').innerText = `$${totalCollectedToday.toLocaleString()}`;
+                document.getElementById('colRemainingToday').innerText = `$${remainingToday.toLocaleString()}`;
+            } else {
+                summaryBox.classList.add('hidden');
+            }
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="bg-white p-6 rounded-2xl text-center text-gray-400 text-xs">No hay clientes registrados.</div>`;
+                return;
+            }
+
+            container.innerHTML = filtered.map(c => `
+                <div class="bg-white p-4 rounded-2xl shadow-sm border space-y-2">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-black uppercase text-sm">${c.name} ${c.lastName}</h3>
+                        <button onclick="deleteClient('${c.id}')" class="text-red-500 p-1 hover:bg-red-50 rounded-lg transition"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-gray-500">Saldo: <strong class="text-emerald-700">$${c.currentBalance.toLocaleString()}</strong></span>
+                        ${c.lat && c.lng ? `<a href="https://www.google.com/maps?q=${c.lat},${c.lng}" target="_blank" class="text-blue-600 font-semibold hover:underline flex items-center space-x-1"><i class="fa-solid fa-location-dot"></i><span>Ver Mapa</span></a>` : '<span class="text-gray-400 text-[10px]">Sin GPS</span>'}
+                    </div>
+                    <div class="grid grid-cols-3 gap-1 pt-2">
+                        <button onclick="openPay('${c.id}')" class="bg-emerald-600 text-white py-1.5 rounded-lg text-xs font-bold">Abonar</button>
+                        <a href="tel:${c.phone}" class="bg-emerald-500 text-white py-1.5 rounded-lg text-xs font-bold text-center flex items-center justify-center space-x-1"><i class="fa-solid fa-phone"></i><span>Llamar</span></a>
+                        <a href="https://wa.me/57${c.phone.replace(/\D/g,'')}" target="_blank" class="bg-blue-600 text-white py-1.5 rounded-lg text-xs font-bold text-center flex items-center justify-center space-x-1"><i class="fa-brands fa-whatsapp"></i><span>WhatsApp</span></a>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function deleteClient(id) {
+            if (confirm('¿Estás seguro de eliminar este cliente de la nube?')) {
+                try {
+                    await db.collection("clients").doc(id).delete();
+                    alert('Cliente eliminado.');
+                } catch(err) {
+                    alert('Error eliminando cliente: ' + err.message);
+                }
+            }
+        }
+
+        function calculateCreditTotals() {
+            const amount = parseFloat(document.getElementById('saleAmount').value) || 0;
+            const interest = parseFloat(document.getElementById('saleInterest').value) || 20;
+            const isWeekly = document.getElementById('saleWeekly').checked;
+            const inst = parseInt(document.getElementById('saleInstalments').value) || 30;
+            const total = amount + (amount * (interest / 100));
+            const quota = total / inst;
+            document.getElementById('calcTotal').innerText = `$${Math.round(total).toLocaleString()}`;
+            document.getElementById('calcQuota').innerText = `$${Math.round(quota).toLocaleString()} / ${isWeekly ? 'semana' : 'día'}`;
+        }
+
+        async function handleCreateSale(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnSaveSale');
+            btn.disabled = true;
+            btn.innerText = 'Guardando en la nube...';
+
+            const amount = parseFloat(document.getElementById('saleAmount').value) || 0;
+            const interest = parseFloat(document.getElementById('saleInterest').value) || 20;
+            const inst = parseInt(document.getElementById('saleInstalments').value) || 30;
+            const total = amount + (amount * (interest / 100));
+
+            const clientId = 'cli_' + Date.now();
+            const newC = {
+                id: clientId,
+                collectorId: currentUser.role === 'admin' ? (users.find(u => u.role === 'cobrador')?.id || currentUser.id) : currentUser.id,
+                name: document.getElementById('saleName').value.toUpperCase(),
+                lastName: document.getElementById('saleLastName').value.toUpperCase(),
+                phone: document.getElementById('salePhone').value,
+                address: document.getElementById('saleAddress').value,
+                lat: capturedLat,
+                lng: capturedLng,
+                baseAmount: amount,
+                totalWithInterest: total,
+                currentBalance: total,
+                quotaValue: Math.round(total / inst)
+            };
+
+            try {
+                await db.collection("clients").doc(clientId).set(newC);
+                alert('¡Crédito guardado exitosamente en la nube!');
+                switchTab('clients');
+            } catch(err) {
+                alert('Error al guardar crédito: ' + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'Guardar Crédito en la Nube';
+            }
+        }
+
+        function toggleRouteView(view) {
+            const listCont = document.getElementById('routeList');
+            const mapCont = document.getElementById('routeMapContainer');
+            const btnList = document.getElementById('btnRouteList');
+            const btnMap = document.getElementById('btnRouteMap');
+
+            if (view === 'map') {
+                listCont.classList.add('hidden');
+                mapCont.classList.remove('hidden');
+                btnMap.classList.add('bg-white', 'text-gray-800', 'shadow-sm');
+                btnMap.classList.remove('text-gray-500');
+                btnList.classList.remove('bg-white', 'text-gray-800', 'shadow-sm');
+                btnList.classList.add('text-gray-500');
+
+                renderRouteMap();
+            } else {
+                mapCont.classList.add('hidden');
+                listCont.classList.remove('hidden');
+                btnList.classList.add('bg-white', 'text-gray-800', 'shadow-sm');
+                btnList.classList.remove('text-gray-500');
+                btnMap.classList.remove('bg-white', 'text-gray-800', 'shadow-sm');
+                btnMap.classList.add('text-gray-500');
+            }
+        }
+
+        function renderRoute() {
+            const myClients = getMyClients();
+            const container = document.getElementById('routeList');
+            if (myClients.length === 0) {
+                container.innerHTML = `<div class="bg-white p-6 rounded-2xl text-center text-gray-400 text-xs">No hay ruta de cobro activa.</div>`;
+                return;
+            }
+            container.innerHTML = myClients.map((c, i) => `
+                <div class="bg-white p-3 rounded-xl border flex justify-between items-center text-xs">
+                    <div>
+                        <b>${i+1}. ${c.name} ${c.lastName}</b><br>
+                        <span class="text-gray-500">${c.address}</span>
+                        ${c.lat && c.lng ? `<br><a href="https://www.google.com/maps?q=${c.lat},${c.lng}" target="_blank" class="text-blue-600 font-semibold hover:underline"><i class="fa-solid fa-map-location-dot"></i> Ver en mapa</a>` : ''}
+                    </div>
+                    <div class="text-emerald-700 font-bold">$${c.quotaValue.toLocaleString()}</div>
+                </div>
+            `).join('');
+        }
+
+        function renderRouteMap() {
+            const myClients = getMyClients().filter(c => c.lat && c.lng);
+
+            if (!mapInstance) {
+                mapInstance = L.map('routeMap');
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '© OpenStreetMap'
+                }).addTo(mapInstance);
+                markersGroup = L.featureGroup().addTo(mapInstance);
+            } else {
+                markersGroup.clearLayers();
+            }
+
+            setTimeout(() => { mapInstance.invalidateSize(); }, 200);
+
+            if (myClients.length === 0) {
+                mapInstance.setView([10.9685, -74.7813], 13);
+                return;
+            }
+
+            myClients.forEach((c, index) => {
+                const marker = L.marker([c.lat, c.lng]).addTo(markersGroup);
+                const popupContent = `
+                    <div class="text-xs p-1">
+                        <strong class="block text-sm uppercase font-bold">${index + 1}. ${c.name} ${c.lastName}</strong>
+                        <p class="text-gray-600 mb-1">${c.address}</p>
+                        <div class="text-emerald-700 font-bold mb-2">Cuota: $${c.quotaValue.toLocaleString()}</div>
+                        <a href="https://www.google.com/maps?q=${c.lat},${c.lng}" target="_blank" class="block text-center bg-emerald-600 text-white font-bold py-1 px-2 rounded-lg text-[10px]">
+                            Navegar en Google Maps
+                        </a>
+                    </div>
+                `;
+                marker.bindPopup(popupContent);
+            });
+
+            mapInstance.fitBounds(markersGroup.getBounds().pad(0.1));
+        }
+
+        function populatePaymentDropdown() {
+            const myClients = getMyClients();
+            const select = document.getElementById('payClientSelect');
+            if(myClients.length === 0) {
+                select.innerHTML = `<option value="">No hay clientes disponibles</option>`;
+                document.getElementById('payCurrentBalance').innerText = '$0';
+                return;
+            }
+            select.innerHTML = myClients.map(c => `<option value="${c.id}">${c.name} ${c.lastName} - Saldo: $${c.currentBalance.toLocaleString()}</option>`).join('');
+            updatePayFormDetails();
+        }
+
+        function updatePayFormDetails() {
+            const id = document.getElementById('payClientSelect').value;
+            const c = clients.find(x => x.id == id);
+            if(c) {
+                document.getElementById('payCurrentBalance').innerText = `$${c.currentBalance.toLocaleString()}`;
+            } else {
+                document.getElementById('payCurrentBalance').innerText = '$0';
+            }
+        }
+
+        function openPay(id) {
+            switchTab('registerPayment');
+            document.getElementById('payClientSelect').value = id;
+            updatePayFormDetails();
+        }
+
+        async function submitPayment() {
+            const btn = document.getElementById('btnSubmitPayment');
+            const id = document.getElementById('payClientSelect').value;
+            const amount = parseFloat(document.getElementById('payAmountInput').value) || 0;
+            const c = clients.find(x => x.id == id);
+
+            if(c && amount > 0) {
+                btn.disabled = true;
+                btn.innerText = 'Procesando abono...';
+
+                const newBalance = Math.max(0, c.currentBalance - amount);
+                const todayStr = new Date().toISOString().slice(0,10);
+                const paymentId = 'pay_' + Date.now();
+
+                const paymentData = {
+                    id: paymentId,
+                    clientId: c.id,
+                    amount: amount,
+                    collectorId: currentUser.role === 'admin' ? c.collectorId : currentUser.id,
+                    date: todayStr
+                };
+
+                try {
+                    // Actualizar saldo del cliente en la BD
+                    await db.collection("clients").doc(c.id).update({ currentBalance: newBalance });
+                    // Registrar el pago
+                    await db.collection("payments").doc(paymentId).set(paymentData);
+
+                    const phone = c.phone.replace(/\D/g,'');
+                    const message = `*EXTRAPAGO - COMPROBANTE DE ABONO*\n\n` +
+                                    `Hola *${c.name}*, hemos registrado tu abono exitosamente.\n\n` +
+                                    `💰 Monto Abonado: *$${amount.toLocaleString()}*\n` +
+                                    `📉 Saldo Pendiente: *$${newBalance.toLocaleString()}*\n\n` +
+                                    `¡Gracias por tu pago puntual! 👍`;
+                    
+                    const whatsappUrl = `https://wa.me/57${phone}?text=${encodeURIComponent(message)}`;
+                    
+                    alert('¡Abono registrado en la nube! Redirigiendo a WhatsApp...');
+                    document.getElementById('payAmountInput').value = '';
+                    window.open(whatsappUrl, '_blank');
+                    switchTab('clients');
+                } catch(err) {
+                    alert('Error al registrar pago: ' + err.message);
+                } finally {
+                    btn.disabled = false;
+                    btn.innerText = 'Guardar y Enviar Recibo WhatsApp';
+                }
+            } else {
+                alert('Ingrese un monto válido.');
+            }
+        }
+
+        function sendDailyReportToAdmin(adminPhone = '3001234567') {
+            const todayStr = new Date().toISOString().slice(0,10);
+            const myTodayPayments = paymentsLog.filter(p => p.collectorId == currentUser.id && p.date === todayStr);
+            const totalCollected = myTodayPayments.reduce((acc, p) => acc + p.amount, 0);
+            
+            const message = `📊 *REPORTE DIARIO DE COBRO*\n` +
+                            `👤 Cobrador: *${currentUser.name}*\n` +
+                            `📅 Fecha: ${todayStr}\n\n` +
+                            `💵 Total Cobrado Hoy: *$${totalCollected.toLocaleString()}*\n` +
+                            `📝 Total de Abonos: ${myTodayPayments.length}\n\n` +
+                            `Reporte generado desde la app Extrapago.`;
+
+            const url = `https://wa.me/57${adminPhone}?text=${encodeURIComponent(message)}`;
+            window.open(url, '_blank');
+        }
+
+        function renderAdmin() {
+            selectedCollectorId = null;
+            document.getElementById('btnBackAdmin').classList.add('hidden');
+            document.getElementById('adminStatTitle').innerText = "Caja General / Cartera (Todos los Cobradores)";
+
+            const totalInStreet = clients.reduce((acc, c) => acc + (c.currentBalance || 0), 0);
+            const totalInvested = clients.reduce((acc, c) => acc + (c.baseAmount || 0), 0);
+            const totalGenerated = clients.reduce((acc, c) => acc + ((c.totalWithInterest || c.currentBalance || 0) - (c.baseAmount || 0)), 0);
+
+            document.getElementById('adminStatTotalLent').innerText = `$${totalInStreet.toLocaleString()}`;
+            document.getElementById('adminStatInvested').innerText = `$${totalInvested.toLocaleString()}`;
+            document.getElementById('adminStatGenerated').innerText = `$${totalGenerated.toLocaleString()}`;
+
+            const collectors = users.filter(u => u.role === 'cobrador');
+            const container = document.getElementById('adminContentArea');
+
+            if (collectors.length === 0) {
+                container.innerHTML = `<div class="bg-white p-6 rounded-2xl text-center text-gray-400 text-xs">No hay cobradores registrados aún.</div>`;
+                return;
+            }
+
+            container.innerHTML = `<h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Seleccione un Cobrador</h3>` + 
+            collectors.map(col => {
+                const colClients = clients.filter(c => c.collectorId == col.id);
+                const colTotal = colClients.reduce((acc, c) => acc + (c.currentBalance || 0), 0);
+                return `
+                    <div onclick="selectCollector('${col.id}')" class="bg-white p-4 rounded-2xl shadow-sm border flex justify-between items-center cursor-pointer hover:bg-emerald-50 transition">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center">${col.name.charAt(0)}</div>
+                            <div>
+                                <h4 class="font-bold text-sm text-gray-900">${col.name}</h4>
+                                <span class="text-xs text-gray-500">${colClients.length} clientes asignados</span>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-xs text-gray-400 block">En la calle</span>
+                            <strong class="text-sm font-black text-emerald-700">$${colTotal.toLocaleString()}</strong>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function selectCollector(colId) {
+            selectedCollectorId = colId;
+            const col = users.find(u => u.id == colId);
+            if(!col) return;
+
+            document.getElementById('btnBackAdmin').classList.remove('hidden');
+            document.getElementById('adminStatTitle').innerText = `Cartera - ${col.name}`;
+
+            const colClients = clients.filter(c => c.collectorId == colId);
+            const colTotal = colClients.reduce((acc, c) => acc + (c.currentBalance || 0), 0);
+            const colInvested = colClients.reduce((acc, c) => acc + (c.baseAmount || 0), 0);
+            const colGenerated = colClients.reduce((acc, c) => acc + ((c.totalWithInterest || c.currentBalance || 0) - (c.baseAmount || 0)), 0);
+
+            document.getElementById('adminStatTotalLent').innerText = `$${colTotal.toLocaleString()}`;
+            document.getElementById('adminStatInvested').innerText = `$${colInvested.toLocaleString()}`;
+            document.getElementById('adminStatGenerated').innerText = `$${colGenerated.toLocaleString()}`;
+
+            const container = document.getElementById('adminContentArea');
+            if (colClients.length === 0) {
+                container.innerHTML = `<div class="bg-white p-6 rounded-2xl text-center text-gray-400 text-xs">Este cobrador no tiene clientes registrados.</div>`;
+                return;
+            }
+
+            container.innerHTML = `<h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Clientes de ${col.name}</h3>` + 
+            colClients.map(c => `
+                <div class="bg-white p-4 rounded-2xl shadow-sm border space-y-2">
+                    <div class="flex justify-between items-center">
+                        <h4 class="font-black uppercase text-sm">${c.name} ${c.lastName}</h4>
+                        <button onclick="deleteClient('${c.id}'); selectCollector('${colId}')" class="text-red-500 p-1 hover:bg-red-50 rounded-lg transition"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-gray-500">Saldo: <strong class="text-emerald-700">$${c.currentBalance.toLocaleString()}</strong></span>
+                        ${c.lat && c.lng ? `<a href="https://www.google.com/maps?q=${c.lat},${c.lng}" target="_blank" class="text-blue-600 font-semibold hover:underline"><i class="fa-solid fa-location-dot"></i> Ver en Mapa</a>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+    </script>
+</body>
+</html>
