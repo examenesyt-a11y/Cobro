@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-    <!-- FIREBASE SDKs (Compatiblity mode para CDN) -->
+    <!-- FIREBASE SDKs (Compatibility mode) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 
@@ -152,9 +152,9 @@
                     <div>
                         <label class="block text-xs font-semibold text-gray-700 mb-1">Dirección *</label>
                         <input type="text" id="saleAddress" required class="w-full px-3 py-2 text-sm border rounded-xl mb-2" placeholder="Calle 72 # 41-20">
-                        <button type="button" onclick="captureLocation()" class="w-full py-2.5 bg-gray-100 text-gray-700 font-bold rounded-xl text-xs flex items-center justify-center space-x-2 border hover:bg-gray-200 transition">
+                        <button type="button" onclick="captureLocationAndAddress()" class="w-full py-2.5 bg-gray-100 text-gray-700 font-bold rounded-xl text-xs flex items-center justify-center space-x-2 border hover:bg-gray-200 transition">
                             <i class="fa-solid fa-location-dot text-emerald-600 text-base"></i>
-                            <span id="locationBtnText">Capturar Ubicación GPS actual</span>
+                            <span id="locationBtnText">Capturar GPS y Dirección Automática</span>
                         </button>
                         <input type="hidden" id="saleLat">
                         <input type="hidden" id="saleLng">
@@ -169,23 +169,54 @@
                             <input type="number" id="saleInterest" required value="20" oninput="calculateCreditTotals()" class="w-full px-3 py-2 text-sm border rounded-xl">
                         </div>
                     </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Mora diaria ($)</label>
+                            <input type="number" id="saleDailyPenalty" value="0" placeholder="Ej: 2000" class="w-full px-3 py-2 text-sm border rounded-xl">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Cuotas *</label>
+                            <select id="saleInstalments" onchange="calculateCreditTotals()" class="w-full px-3 py-2 text-sm border rounded-xl bg-white">
+                                <option value="15">15 Cuotas</option>
+                                <option value="20">20 Cuotas</option>
+                                <option value="30" selected>30 Cuotas</option>
+                                <option value="40">40 Cuotas</option>
+                            </select>
+                        </div>
+                    </div>
                     <div class="flex items-center space-x-2 py-1">
                         <input type="checkbox" id="saleWeekly" onchange="calculateCreditTotals()" class="w-4 h-4 text-emerald-600 rounded">
                         <label for="saleWeekly" class="text-xs font-medium text-gray-700">Pago Semanal (Por defecto Diario)</label>
                     </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-700 mb-1">Cuotas *</label>
-                        <select id="saleInstalments" onchange="calculateCreditTotals()" class="w-full px-3 py-2 text-sm border rounded-xl bg-white">
-                            <option value="15">15 Cuotas</option>
-                            <option value="20">20 Cuotas</option>
-                            <option value="30" selected>30 Cuotas</option>
-                            <option value="40">40 Cuotas</option>
-                        </select>
-                    </div>
+
                     <div class="bg-emerald-50 p-3 rounded-xl text-center">
                         <span class="text-xs font-bold text-emerald-800">Total + Interés</span>
                         <div id="calcTotal" class="text-xl font-black text-emerald-700">$0</div>
                         <span id="calcQuota" class="text-xs font-bold text-gray-600">$0 /día</span>
+                    </div>
+
+                    <!-- FOTOS REQUERIDAS OBLIGATORIAS -->
+                    <div class="space-y-2 pt-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs font-bold text-emerald-700 uppercase">Fotos Requeridas (Obligatorias) *</span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 text-center text-[10px]">
+                            <div class="border-2 border-dashed border-emerald-300 p-2 rounded-xl relative bg-gray-50 h-24 flex flex-col items-center justify-center">
+                                <i class="fa-solid fa-user text-emerald-600 text-lg mb-1"></i><span>Persona *</span>
+                                <input type="file" id="filePerson" accept="image/*" required onchange="previewImage(event, 'personImgPrev')" class="absolute inset-0 opacity-0 cursor-pointer">
+                                <img id="personImgPrev" class="hidden absolute inset-0 w-full h-full object-cover rounded-xl">
+                            </div>
+                            <div class="border-2 border-dashed border-emerald-300 p-2 rounded-xl relative bg-gray-50 h-24 flex flex-col items-center justify-center">
+                                <i class="fa-solid fa-id-card text-emerald-600 text-lg mb-1"></i><span>Cédula *</span>
+                                <input type="file" id="fileIdCard" accept="image/*" required onchange="previewImage(event, 'idImgPrev')" class="absolute inset-0 opacity-0 cursor-pointer">
+                                <img id="idImgPrev" class="hidden absolute inset-0 w-full h-full object-cover rounded-xl">
+                            </div>
+                            <div class="border-2 border-dashed border-emerald-300 p-2 rounded-xl relative bg-gray-50 h-24 flex flex-col items-center justify-center">
+                                <i class="fa-solid fa-house text-emerald-600 text-lg mb-1"></i><span>Casa *</span>
+                                <input type="file" id="fileHouse" accept="image/*" required onchange="previewImage(event, 'houseImgPrev')" class="absolute inset-0 opacity-0 cursor-pointer">
+                                <img id="houseImgPrev" class="hidden absolute inset-0 w-full h-full object-cover rounded-xl">
+                            </div>
+                        </div>
                     </div>
 
                     <button type="submit" id="btnSaveSale" class="w-full py-3 bg-emerald-600 text-white font-bold rounded-xl shadow-md hover:bg-emerald-700 transition">Guardar Crédito en la Nube</button>
@@ -216,7 +247,14 @@
                     <select id="payClientSelect" onchange="updatePayFormDetails()" class="w-full px-3 py-2 text-sm border rounded-xl bg-white"></select>
                     <div id="payClientDetailsCard" class="bg-gray-50 p-3 rounded-xl text-xs space-y-1">
                         <div>Saldo Actual: <strong id="payCurrentBalance" class="text-red-600">$0</strong></div>
+                        <div id="payPenaltyInfo" class="text-amber-700 font-semibold hidden">Mora Diaria Configurada: <span id="payPenaltyVal">$0</span></div>
                     </div>
+                    
+                    <div class="flex items-center space-x-2 bg-amber-50 p-2.5 rounded-xl border border-amber-200">
+                        <input type="checkbox" id="applyPenaltyCheck" class="w-4 h-4 text-amber-600 rounded">
+                        <label for="applyPenaltyCheck" class="text-xs font-semibold text-amber-900">Aplicar cobro de mora adicional hoy</label>
+                    </div>
+
                     <input type="number" id="payAmountInput" placeholder="Monto abono ($)" class="w-full px-3 py-2 text-sm border rounded-xl">
                     <button onclick="submitPayment()" id="btnSubmitPayment" class="w-full py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 transition">Guardar y Enviar Recibo WhatsApp</button>
                 </div>
@@ -269,7 +307,7 @@
     </div>
 
     <script>
-        // --- 1. FIREBASE INITIALIZATION ---
+        // --- 1. FIREBASE CONFIG ---
         const firebaseConfig = {
             apiKey: "AIzaSyBzx6jjpTW9OGQr9XvVOyI6PDyJzFsWTEo",
             authDomain: "extrapago-app.firebaseapp.com",
@@ -295,13 +333,17 @@
         let mapInstance = null;
         let markersGroup = null;
 
-        // Usuario Admin por defecto si la BD está vacía
+        let personImgBase64 = '';
+        let idCardImgBase64 = '';
+        let houseImgBase64 = '';
+
         const DEFAULT_ADMIN = {
             id: 'admin_1',
             name: 'Administrador',
             username: 'admin',
             pass: 'admin123',
-            role: 'admin'
+            role: 'admin',
+            status: 'active'
         };
 
         window.addEventListener('DOMContentLoaded', () => {
@@ -315,29 +357,25 @@
             }
         });
 
-        // --- 3. REALTIME SYNC WITH FIREBASE ---
+        // --- 3. REALTIME SYNC ---
         function initRealtimeListeners() {
-            // Escuchar Usuarios
             db.collection("users").onSnapshot((snapshot) => {
                 users = [];
                 snapshot.forEach((doc) => {
                     users.push(doc.data());
                 });
 
-                // Si no hay ningún usuario registrado, agregamos el Admin por defecto a la nube
                 if (users.length === 0) {
                     db.collection("users").doc(DEFAULT_ADMIN.id).set(DEFAULT_ADMIN);
                 }
             });
 
-            // Escuchar Clientes en tiempo real
             db.collection("clients").onSnapshot((snapshot) => {
                 clients = [];
                 snapshot.forEach((doc) => {
                     clients.push(doc.data());
                 });
 
-                // Si la vista actual es visible, refrescamos dinámicamente
                 if (currentUser) {
                     renderClients();
                     if (selectedCollectorId) {
@@ -348,7 +386,6 @@
                 }
             });
 
-            // Escuchar Pagos/Abonos en tiempo real
             db.collection("payments").onSnapshot((snapshot) => {
                 paymentsLog = [];
                 snapshot.forEach((doc) => {
@@ -358,7 +395,7 @@
             });
         }
 
-        // --- 4. AUTHENTICATION LOGIC ---
+        // --- 4. AUTHENTICATION ---
         function toggleAuthMode() {
             isRegisterMode = !isRegisterMode;
             document.getElementById('authFormTitle').innerText = isRegisterMode ? 'Registro de Cobrador' : 'Iniciar Sesión';
@@ -391,12 +428,13 @@
                     name: name,
                     username: u,
                     pass: p,
-                    role: 'cobrador'
+                    role: 'cobrador',
+                    status: 'active'
                 };
 
                 try {
                     await db.collection("users").doc(newCol.id).set(newCol);
-                    alert('¡Registro exitoso en la nube! Ahora puedes iniciar sesión.');
+                    alert('¡Registro exitoso! Ahora puedes iniciar sesión.');
                     toggleAuthMode();
                 } catch(err) {
                     alert('Error registrando usuario: ' + err.message);
@@ -404,6 +442,10 @@
             } else {
                 const found = users.find(x => x.username.toLowerCase() === u.toLowerCase() && x.pass === p);
                 if (found) {
+                    if (found.status === 'inactive') {
+                        alert('Tu cuenta de cobrador ha sido DESACTIVADA por el Administrador.');
+                        return;
+                    }
                     currentUser = found;
                     localStorage.setItem('ep_session', JSON.stringify(currentUser));
                     showAppUI();
@@ -460,7 +502,11 @@
                 calculateCreditTotals();
                 capturedLat = null;
                 capturedLng = null;
-                document.getElementById('locationBtnText').innerText = 'Capturar Ubicación GPS actual';
+                personImgBase64 = ''; idCardImgBase64 = ''; houseImgBase64 = '';
+                document.getElementById('personImgPrev').classList.add('hidden');
+                document.getElementById('idImgPrev').classList.add('hidden');
+                document.getElementById('houseImgPrev').classList.add('hidden');
+                document.getElementById('locationBtnText').innerText = 'Capturar GPS y Dirección Automática';
                 document.getElementById('locationBtnText').classList.remove('text-emerald-700', 'font-bold');
             }
             else if (tab === 'route') { 
@@ -497,28 +543,63 @@
             }
         }
 
-        function captureLocation() {
+        // --- GEOLOCALIZACIÓN Y DIRECCIÓN AUTOMÁTICA ---
+        function captureLocationAndAddress() {
             const btnText = document.getElementById('locationBtnText');
+            const addressInput = document.getElementById('saleAddress');
+
             if (!navigator.geolocation) {
-                alert('La geolocalización no es compatible con tu navegador.');
+                alert('La geolocalización no es compatible en tu navegador.');
                 return;
             }
-            btnText.innerText = 'Obteniendo ubicación GPS...';
+            btnText.innerText = 'Obteniendo GPS y buscando dirección...';
+
             navigator.geolocation.getCurrentPosition(
-                (position) => {
+                async (position) => {
                     capturedLat = position.coords.latitude;
                     capturedLng = position.coords.longitude;
                     document.getElementById('saleLat').value = capturedLat;
                     document.getElementById('saleLng').value = capturedLng;
-                    btnText.innerText = `GPS Guardado (${capturedLat.toFixed(4)}, ${capturedLng.toFixed(4)})`;
+
+                    try {
+                        // Geocodificación Inversa con OpenStreetMap Nominatim
+                        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${capturedLat}&lon=${capturedLng}`);
+                        const data = await res.json();
+
+                        if (data && data.display_name) {
+                            addressInput.value = data.display_name;
+                            btnText.innerText = `GPS y Dirección colocados (${capturedLat.toFixed(4)}, ${capturedLng.toFixed(4)})`;
+                        } else {
+                            btnText.innerText = `GPS Guardado (${capturedLat.toFixed(4)}, ${capturedLng.toFixed(4)})`;
+                        }
+                    } catch(e) {
+                        btnText.innerText = `GPS Guardado (${capturedLat.toFixed(4)}, ${capturedLng.toFixed(4)})`;
+                    }
+
                     btnText.classList.add('text-emerald-700', 'font-bold');
                 },
                 (error) => {
-                    alert('No se pudo obtener la ubicación. Asegúrate de dar permisos de GPS.');
-                    btnText.innerText = 'Capturar Ubicación GPS actual';
+                    alert('No se pudo obtener la ubicación GPS.');
+                    btnText.innerText = 'Capturar GPS y Dirección Automática';
                 },
                 { enableHighAccuracy: true }
             );
+        }
+
+        function previewImage(event, imgElementId) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = document.getElementById(imgElementId);
+                img.src = e.target.result;
+                img.classList.remove('hidden');
+
+                if (imgElementId === 'personImgPrev') personImgBase64 = e.target.result;
+                if (imgElementId === 'idImgPrev') idCardImgBase64 = e.target.result;
+                if (imgElementId === 'houseImgPrev') houseImgBase64 = e.target.result;
+            };
+            reader.readAsDataURL(file);
         }
 
         function renderClients() {
@@ -550,22 +631,35 @@
             }
 
             container.innerHTML = filtered.map(c => `
-                <div class="bg-white p-4 rounded-2xl shadow-sm border space-y-2">
+                <div class="bg-white p-4 rounded-2xl shadow-sm border space-y-2 ${c.banned ? 'border-red-400 bg-red-50/30' : ''}">
                     <div class="flex justify-between items-center">
-                        <h3 class="font-black uppercase text-sm">${c.name} ${c.lastName}</h3>
+                        <div class="flex items-center space-x-2">
+                            <h3 class="font-black uppercase text-sm">${c.name} ${c.lastName}</h3>
+                            ${c.banned ? '<span class="bg-red-600 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded">VETADO / MALA PAGA</span>' : ''}
+                        </div>
                         <button onclick="deleteClient('${c.id}')" class="text-red-500 p-1 hover:bg-red-50 rounded-lg transition"><i class="fa-solid fa-trash"></i></button>
                     </div>
                     <div class="flex justify-between items-center text-xs">
                         <span class="text-gray-500">Saldo: <strong class="text-emerald-700">$${c.currentBalance.toLocaleString()}</strong></span>
                         ${c.lat && c.lng ? `<a href="https://www.google.com/maps?q=${c.lat},${c.lng}" target="_blank" class="text-blue-600 font-semibold hover:underline flex items-center space-x-1"><i class="fa-solid fa-location-dot"></i><span>Ver Mapa</span></a>` : '<span class="text-gray-400 text-[10px]">Sin GPS</span>'}
                     </div>
+                    ${c.dailyPenalty > 0 ? `<div class="text-[10px] text-amber-700 font-bold">Mora diaria configurada: $${c.dailyPenalty.toLocaleString()}</div>` : ''}
                     <div class="grid grid-cols-3 gap-1 pt-2">
                         <button onclick="openPay('${c.id}')" class="bg-emerald-600 text-white py-1.5 rounded-lg text-xs font-bold">Abonar</button>
                         <a href="tel:${c.phone}" class="bg-emerald-500 text-white py-1.5 rounded-lg text-xs font-bold text-center flex items-center justify-center space-x-1"><i class="fa-solid fa-phone"></i><span>Llamar</span></a>
-                        <a href="https://wa.me/57${c.phone.replace(/\D/g,'')}" target="_blank" class="bg-blue-600 text-white py-1.5 rounded-lg text-xs font-bold text-center flex items-center justify-center space-x-1"><i class="fa-brands fa-whatsapp"></i><span>WhatsApp</span></a>
+                        <button onclick="toggleBanClient('${c.id}', ${!c.banned})" class="${c.banned ? 'bg-gray-600' : 'bg-red-600'} text-white py-1.5 rounded-lg text-xs font-bold">${c.banned ? 'Quitar Veto' : 'Vetar Client'}</button>
                     </div>
                 </div>
             `).join('');
+        }
+
+        async function toggleBanClient(clientId, banStatus) {
+            try {
+                await db.collection("clients").doc(clientId).update({ banned: banStatus });
+                alert(banStatus ? 'Cliente clasificado como VETADO / MALA PAGA.' : 'Veto retirado al cliente.');
+            } catch(e) {
+                alert('Error al actualizar cliente: ' + e.message);
+            }
         }
 
         async function deleteClient(id) {
@@ -592,12 +686,20 @@
 
         async function handleCreateSale(e) {
             e.preventDefault();
+
+            // VALIDACIÓN ESTRICTA DE FOTOS
+            if (!personImgBase64 || !idCardImgBase64 || !houseImgBase64) {
+                alert('¡Atención! Para registrar un crédito es OBLIGATORIO subir las 3 fotos: Persona, Cédula y Casa.');
+                return;
+            }
+
             const btn = document.getElementById('btnSaveSale');
             btn.disabled = true;
             btn.innerText = 'Guardando en la nube...';
 
             const amount = parseFloat(document.getElementById('saleAmount').value) || 0;
             const interest = parseFloat(document.getElementById('saleInterest').value) || 20;
+            const dailyPenalty = parseFloat(document.getElementById('saleDailyPenalty').value) || 0;
             const inst = parseInt(document.getElementById('saleInstalments').value) || 30;
             const total = amount + (amount * (interest / 100));
 
@@ -614,12 +716,19 @@
                 baseAmount: amount,
                 totalWithInterest: total,
                 currentBalance: total,
-                quotaValue: Math.round(total / inst)
+                quotaValue: Math.round(total / inst),
+                dailyPenalty: dailyPenalty,
+                banned: false,
+                photos: {
+                    person: personImgBase64,
+                    idCard: idCardImgBase64,
+                    house: houseImgBase64
+                }
             };
 
             try {
                 await db.collection("clients").doc(clientId).set(newC);
-                alert('¡Crédito guardado exitosamente en la nube!');
+                alert('¡Crédito creado exitosamente con fotos y GPS!');
                 switchTab('clients');
             } catch(err) {
                 alert('Error al guardar crédito: ' + err.message);
@@ -664,7 +773,7 @@
             container.innerHTML = myClients.map((c, i) => `
                 <div class="bg-white p-3 rounded-xl border flex justify-between items-center text-xs">
                     <div>
-                        <b>${i+1}. ${c.name} ${c.lastName}</b><br>
+                        <b>${i+1}. ${c.name} ${c.lastName}</b> ${c.banned ? '<span class="text-red-600 font-bold">(VETADO)</span>' : ''}<br>
                         <span class="text-gray-500">${c.address}</span>
                         ${c.lat && c.lng ? `<br><a href="https://www.google.com/maps?q=${c.lat},${c.lng}" target="_blank" class="text-blue-600 font-semibold hover:underline"><i class="fa-solid fa-map-location-dot"></i> Ver en mapa</a>` : ''}
                     </div>
@@ -727,10 +836,20 @@
         function updatePayFormDetails() {
             const id = document.getElementById('payClientSelect').value;
             const c = clients.find(x => x.id == id);
+            const penaltyInfo = document.getElementById('payPenaltyInfo');
+            const penaltyVal = document.getElementById('payPenaltyVal');
+
             if(c) {
                 document.getElementById('payCurrentBalance').innerText = `$${c.currentBalance.toLocaleString()}`;
+                if (c.dailyPenalty && c.dailyPenalty > 0) {
+                    penaltyInfo.classList.remove('hidden');
+                    penaltyVal.innerText = `$${c.dailyPenalty.toLocaleString()}`;
+                } else {
+                    penaltyInfo.classList.add('hidden');
+                }
             } else {
                 document.getElementById('payCurrentBalance').innerText = '$0';
+                penaltyInfo.classList.add('hidden');
             }
         }
 
@@ -744,13 +863,17 @@
             const btn = document.getElementById('btnSubmitPayment');
             const id = document.getElementById('payClientSelect').value;
             const amount = parseFloat(document.getElementById('payAmountInput').value) || 0;
+            const applyPenalty = document.getElementById('applyPenaltyCheck').checked;
             const c = clients.find(x => x.id == id);
 
             if(c && amount > 0) {
                 btn.disabled = true;
                 btn.innerText = 'Procesando abono...';
 
-                const newBalance = Math.max(0, c.currentBalance - amount);
+                let penaltyToAdd = (applyPenalty && c.dailyPenalty) ? c.dailyPenalty : 0;
+                let adjustedBalance = c.currentBalance + penaltyToAdd;
+                const newBalance = Math.max(0, adjustedBalance - amount);
+
                 const todayStr = new Date().toISOString().slice(0,10);
                 const paymentId = 'pay_' + Date.now();
 
@@ -758,27 +881,30 @@
                     id: paymentId,
                     clientId: c.id,
                     amount: amount,
+                    penaltyApplied: penaltyToAdd,
                     collectorId: currentUser.role === 'admin' ? c.collectorId : currentUser.id,
                     date: todayStr
                 };
 
                 try {
-                    // Actualizar saldo del cliente en la BD
                     await db.collection("clients").doc(c.id).update({ currentBalance: newBalance });
-                    // Registrar el pago
                     await db.collection("payments").doc(paymentId).set(paymentData);
 
                     const phone = c.phone.replace(/\D/g,'');
-                    const message = `*EXTRAPAGO - COMPROBANTE DE ABONO*\n\n` +
+                    let message = `*EXTRAPAGO - COMPROBANTE DE ABONO*\n\n` +
                                     `Hola *${c.name}*, hemos registrado tu abono exitosamente.\n\n` +
-                                    `💰 Monto Abonado: *$${amount.toLocaleString()}*\n` +
-                                    `📉 Saldo Pendiente: *$${newBalance.toLocaleString()}*\n\n` +
-                                    `¡Gracias por tu pago puntual! 👍`;
+                                    `💰 Monto Abonado: *$${amount.toLocaleString()}*\n`;
+                    if (penaltyToAdd > 0) {
+                        message += `⚠️ Mora Aplicada: *$${penaltyToAdd.toLocaleString()}*\n`;
+                    }
+                    message += `📉 Saldo Pendiente: *$${newBalance.toLocaleString()}*\n\n` +
+                               `¡Gracias por tu pago puntual! 👍`;
                     
                     const whatsappUrl = `https://wa.me/57${phone}?text=${encodeURIComponent(message)}`;
                     
-                    alert('¡Abono registrado en la nube! Redirigiendo a WhatsApp...');
+                    alert('¡Abono registrado en la nube!');
                     document.getElementById('payAmountInput').value = '';
+                    document.getElementById('applyPenaltyCheck').checked = false;
                     window.open(whatsappUrl, '_blank');
                     switchTab('clients');
                 } catch(err) {
@@ -829,26 +955,45 @@
                 return;
             }
 
-            container.innerHTML = `<h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Seleccione un Cobrador</h3>` + 
+            container.innerHTML = `<h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Gestión de Cobradores</h3>` + 
             collectors.map(col => {
                 const colClients = clients.filter(c => c.collectorId == col.id);
                 const colTotal = colClients.reduce((acc, c) => acc + (c.currentBalance || 0), 0);
+                const isActive = col.status !== 'inactive';
+
                 return `
-                    <div onclick="selectCollector('${col.id}')" class="bg-white p-4 rounded-2xl shadow-sm border flex justify-between items-center cursor-pointer hover:bg-emerald-50 transition">
-                        <div class="flex items-center space-x-3">
-                            <div class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center">${col.name.charAt(0)}</div>
-                            <div>
-                                <h4 class="font-bold text-sm text-gray-900">${col.name}</h4>
-                                <span class="text-xs text-gray-500">${colClients.length} clientes asignados</span>
+                    <div class="bg-white p-4 rounded-2xl shadow-sm border space-y-3">
+                        <div class="flex justify-between items-center cursor-pointer" onclick="selectCollector('${col.id}')">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 rounded-full ${isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'} font-bold flex items-center justify-center">${col.name.charAt(0)}</div>
+                                <div>
+                                    <h4 class="font-bold text-sm text-gray-900">${col.name}</h4>
+                                    <span class="text-xs text-gray-500">${colClients.length} clientes asignados</span>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-xs text-gray-400 block">En la calle</span>
+                                <strong class="text-sm font-black text-emerald-700">$${colTotal.toLocaleString()}</strong>
                             </div>
                         </div>
-                        <div class="text-right">
-                            <span class="text-xs text-gray-400 block">En la calle</span>
-                            <strong class="text-sm font-black text-emerald-700">$${colTotal.toLocaleString()}</strong>
+                        <div class="pt-2 border-t flex justify-between items-center text-xs">
+                            <span class="font-semibold text-gray-600">Estado: <strong class="${isActive ? 'text-emerald-600' : 'text-red-600'}">${isActive ? 'ACTIVO' : 'INACTIVO'}</strong></span>
+                            <button onclick="toggleUserStatus('${col.id}', '${isActive ? 'inactive' : 'active'}')" class="px-3 py-1 rounded-lg font-bold ${isActive ? 'bg-red-100 text-red-700 hover:bg-red-200' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'} transition">
+                                ${isActive ? 'Desactivar Cobrador' : 'Activar Cobrador'}
+                            </button>
                         </div>
                     </div>
                 `;
             }).join('');
+        }
+
+        async function toggleUserStatus(userId, newStatus) {
+            try {
+                await db.collection("users").doc(userId).update({ status: newStatus });
+                alert(`Estado del cobrador actualizado a: ${newStatus.toUpperCase()}`);
+            } catch(e) {
+                alert('Error al actualizar estado: ' + e.message);
+            }
         }
 
         function selectCollector(colId) {
@@ -876,7 +1021,7 @@
 
             container.innerHTML = `<h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Clientes de ${col.name}</h3>` + 
             colClients.map(c => `
-                <div class="bg-white p-4 rounded-2xl shadow-sm border space-y-2">
+                <div class="bg-white p-4 rounded-2xl shadow-sm border space-y-2 ${c.banned ? 'border-red-400 bg-red-50/30' : ''}">
                     <div class="flex justify-between items-center">
                         <h4 class="font-black uppercase text-sm">${c.name} ${c.lastName}</h4>
                         <button onclick="deleteClient('${c.id}'); selectCollector('${colId}')" class="text-red-500 p-1 hover:bg-red-50 rounded-lg transition"><i class="fa-solid fa-trash"></i></button>
