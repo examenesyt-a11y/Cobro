@@ -562,7 +562,6 @@
                     document.getElementById('saleLng').value = capturedLng;
 
                     try {
-                        // Geocodificación Inversa con OpenStreetMap Nominatim
                         const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${capturedLat}&lon=${capturedLng}`);
                         const data = await res.json();
 
@@ -586,18 +585,50 @@
             );
         }
 
+        // --- COMPRESIÓN ALTA DE IMÁGENES (MÁX 600PX Y CALIDAD 0.4 PARA CUMPLIR LÍMITE FIRESTORE) ---
         function previewImage(event, imgElementId) {
             const file = event.target.files[0];
             if (!file) return;
+
             const reader = new FileReader();
             reader.onload = function(e) {
-                const img = document.getElementById(imgElementId);
-                img.src = e.target.result;
-                img.classList.remove('hidden');
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    
+                    let width = img.width;
+                    let height = img.height;
+                    const maxDimension = 600; // Reducción a 600px máximo
 
-                if (imgElementId === 'personImgPrev') personImgBase64 = e.target.result;
-                if (imgElementId === 'idImgPrev') idCardImgBase64 = e.target.result;
-                if (imgElementId === 'houseImgPrev') houseImgBase64 = e.target.result;
+                    if (width > height) {
+                        if (width > maxDimension) {
+                            height = Math.round((height * maxDimension) / width);
+                            width = maxDimension;
+                        }
+                    } else {
+                        if (height > maxDimension) {
+                            width = Math.round((width * maxDimension) / height);
+                            height = maxDimension;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    // Calidad 0.4 para comprimir a ~30KB por foto
+                    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.4);
+
+                    const imgPrev = document.getElementById(imgElementId);
+                    imgPrev.src = compressedBase64;
+                    imgPrev.classList.remove('hidden');
+
+                    if (imgElementId === 'personImgPrev') personImgBase64 = compressedBase64;
+                    if (imgElementId === 'idImgPrev') idCardImgBase64 = compressedBase64;
+                    if (imgElementId === 'houseImgPrev') houseImgBase64 = compressedBase64;
+                };
+                img.src = e.target.result;
             };
             reader.readAsDataURL(file);
         }
@@ -647,7 +678,7 @@
                     <div class="grid grid-cols-3 gap-1 pt-2">
                         <button onclick="openPay('${c.id}')" class="bg-emerald-600 text-white py-1.5 rounded-lg text-xs font-bold">Abonar</button>
                         <a href="tel:${c.phone}" class="bg-emerald-500 text-white py-1.5 rounded-lg text-xs font-bold text-center flex items-center justify-center space-x-1"><i class="fa-solid fa-phone"></i><span>Llamar</span></a>
-                        <button onclick="toggleBanClient('${c.id}', ${!c.banned})" class="${c.banned ? 'bg-gray-600' : 'bg-red-600'} text-white py-1.5 rounded-lg text-xs font-bold">${c.banned ? 'Quitar Veto' : 'Vetar Client'}</button>
+                        <button onclick="toggleBanClient('${c.id}', ${!c.banned})" class="${c.banned ? 'bg-gray-600' : 'bg-red-600'} text-white py-1.5 rounded-lg text-xs font-bold">${c.banned ? 'Quitar Veto' : 'Vetar Cliente'}</button>
                     </div>
                 </div>
             `).join('');
@@ -687,7 +718,6 @@
         async function handleCreateSale(e) {
             e.preventDefault();
 
-            // VALIDACIÓN ESTRICTA DE FOTOS
             if (!personImgBase64 || !idCardImgBase64 || !houseImgBase64) {
                 alert('¡Atención! Para registrar un crédito es OBLIGATORIO subir las 3 fotos: Persona, Cédula y Casa.');
                 return;
@@ -728,7 +758,7 @@
 
             try {
                 await db.collection("clients").doc(clientId).set(newC);
-                alert('¡Crédito creado exitosamente con fotos y GPS!');
+                alert('¡Crédito creado exitosamente con fotos comprimidas y GPS!');
                 switchTab('clients');
             } catch(err) {
                 alert('Error al guardar crédito: ' + err.message);
