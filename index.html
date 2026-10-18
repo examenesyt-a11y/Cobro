@@ -585,7 +585,7 @@
             );
         }
 
-        // --- COMPRESIÓN ALTA DE IMÁGENES (MÁX 600PX Y CALIDAD 0.4 PARA CUMPLIR LÍMITE FIRESTORE) ---
+        // --- COMPRESIÓN DE IMÁGENES (MÁX 600PX Y CALIDAD 0.4 PARA CUMPLIR LÍMITE FIRESTORE DE 1MB) ---
         function previewImage(event, imgElementId) {
             const file = event.target.files[0];
             if (!file) return;
@@ -617,7 +617,7 @@
                     canvas.height = height;
                     ctx.drawImage(img, 0, 0, width, height);
 
-                    // Calidad 0.4 para comprimir a ~30KB por foto
+                    // Calidad 0.4 para comprimir a ~30KB por foto (evita exceder 1MB)
                     const compressedBase64 = canvas.toDataURL('image/jpeg', 0.4);
 
                     const imgPrev = document.getElementById(imgElementId);
